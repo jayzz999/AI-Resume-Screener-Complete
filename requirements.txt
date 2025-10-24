@@ -1,0 +1,13 @@
+Flask
+flask-cors
+PyPDF2
+python-docx
+scikit-learn
+numpy
+pandas
+nltk
+spacy
+sentence-transformers
+joblib
+gunicorn
+python-dotenv
