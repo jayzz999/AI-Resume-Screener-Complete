@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import tempfile
 from parser_utils import parse_resume
 from feature_extraction import FeatureExtractor
 import traceback
@@ -49,30 +50,40 @@ if st.button("🔍 Analyze Resume", type="primary", use_container_width=True):
     else:
         try:
             with st.spinner("🔄 Analyzing resume..."):
-                # Parse resume
-                resume_text = parse_resume(uploaded_file)
+                # Save uploaded file to temporary path
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
+                    tmp_file.write(uploaded_file.getbuffer())
+                    tmp_file_path = tmp_file.name
                 
-                if not resume_text or not resume_text.strip():
-                    st.error("❌ Failed to extract text from resume")
-                else:
-                    # Initialize feature extractor
-                    extractor = FeatureExtractor()
+                try:
+                    # Parse resume using file path, not UploadedFile object
+                    resume_text = parse_resume(tmp_file_path)
                     
-                    # Use the correct API: generate_explanation
-                    explanation = extractor.generate_explanation(resume_text, job_description)
-                    
-                    # Extract score and details from explanation
-                    overall_score = explanation['summary']['overall_score'] * 100
-                    skills = explanation['details']
-                    
-                    # Store results
-                    st.session_state.results = {
-                        'score': overall_score,
-                        'skills': skills,
-                        'resume_text': resume_text[:500] + '...' if len(resume_text) > 500 else resume_text
-                    }
-                    st.session_state.analysis_complete = True
-                    
+                    if not resume_text or not resume_text.strip():
+                        st.error("❌ Failed to extract text from resume")
+                    else:
+                        # Initialize feature extractor
+                        extractor = FeatureExtractor()
+                        
+                        # Use the correct API: generate_explanation
+                        explanation = extractor.generate_explanation(resume_text, job_description)
+                        
+                        # Extract score and details from explanation
+                        overall_score = explanation['summary']['overall_score'] * 100
+                        skills = explanation['details']
+                        
+                        # Store results
+                        st.session_state.results = {
+                            'score': overall_score,
+                            'skills': skills,
+                            'resume_text': resume_text[:500] + '...' if len(resume_text) > 500 else resume_text
+                        }
+                        st.session_state.analysis_complete = True
+                finally:
+                    # Clean up temporary file
+                    if os.path.exists(tmp_file_path):
+                        os.unlink(tmp_file_path)
+                        
         except Exception as e:
             st.error(f"❌ An error occurred during analysis: {str(e)}")
             st.exception(e)
