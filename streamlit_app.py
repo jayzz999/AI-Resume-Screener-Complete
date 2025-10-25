@@ -57,7 +57,8 @@ if st.button("🔍 Analyze Resume", type="primary", use_container_width=True):
                 
                 try:
                     # Parse resume using file path, not UploadedFile object
-                    resume_text = parse_resume(tmp_file_path)
+                    resume_result = parse_resume(tmp_file_path)
+                    resume_text = resume_result["raw_text"] if isinstance(resume_result, dict) else resume_result
                     
                     if not resume_text or not resume_text.strip():
                         st.error("❌ Failed to extract text from resume")
