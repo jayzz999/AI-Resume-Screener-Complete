@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import tempfile
-from feature_extraction import extract_features
+from feature_extraction import FeatureExtractor
 from parser_utils import extract_text_from_pdf, extract_text_from_docx
 
 # Page configuration
@@ -17,7 +17,6 @@ st.markdown("""
     Upload a resume and provide a job description to automatically screen and score the candidate.
     The system evaluates skills, experience, and education to provide a comprehensive match score.
 """)
-
 st.divider()
 
 # Create two columns for input
@@ -62,52 +61,38 @@ if submit_button:
                     resume_text = extract_text_from_pdf(tmp_file_path)
                 elif file_extension == '.docx':
                     resume_text = extract_text_from_docx(tmp_file_path)
-                elif file_extension == '.txt':
-                    resume_text = uploaded_file.getvalue().decode('utf-8')
-                else:
-                    st.error("Unsupported file format.")
-                    resume_text = None
+                else:  # .txt
+                    with open(tmp_file_path, 'r', encoding='utf-8') as f:
+                        resume_text = f.read()
                 
-                # Clean up temporary file
+                # Clean up temp file
                 os.unlink(tmp_file_path)
                 
                 if resume_text:
-                    # Extract features and calculate score
-                    result = extract_features(resume_text, job_description)
+                    # Extract features using FeatureExtractor class
+                    extractor = FeatureExtractor()
+                    features = extractor.extract_all_features(resume_text, job_description)
+                    overall_score = extractor.calculate_overall_score(features)
+                    explanation = extractor.generate_explanation(features, overall_score)
+                    
+                    # Update result dictionary to use explanation data
+                    result = {
+                        'overall_score': overall_score,
+                        'matched_skills': explanation.get('matched_skills', []),
+                        'missing_skills': explanation.get('missing_skills', []),
+                        'additional_skills': explanation.get('additional_skills', []),
+                        'recommendation': explanation.get('recommendation', 'No recommendation available')
+                    }
                     
                     # Display results
                     st.success("✅ Analysis Complete!")
-                    st.divider()
                     
-                    # Metrics row
-                    st.subheader("📊 Screening Results")
-                    metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns(4)
-                    
-                    with metrics_col1:
+                    # Overall score display
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
                         st.metric(
-                            label="Overall Score",
-                            value=f"{result.get('overall_score', 0):.1f}%",
-                            delta=None
-                        )
-                    
-                    with metrics_col2:
-                        st.metric(
-                            label="Skill Match",
-                            value=f"{result.get('skill_match_score', 0):.1f}%",
-                            delta=None
-                        )
-                    
-                    with metrics_col3:
-                        st.metric(
-                            label="Experience Score",
-                            value=f"{result.get('experience_score', 0):.1f}%",
-                            delta=None
-                        )
-                    
-                    with metrics_col4:
-                        st.metric(
-                            label="Education Score",
-                            value=f"{result.get('education_score', 0):.1f}%",
+                            label="Overall Match Score",
+                            value=f"{overall_score}%",
                             delta=None
                         )
                     
@@ -172,7 +157,7 @@ if submit_button:
 # Footer
 st.divider()
 st.markdown("""
-    <div style='text-align: center; color: #666;'>
-        <small>AI Resume Screener - Automated Resume Screening System</small>
+    <div style="text-align: center; color: #666;">
+        AI Resume Screener - Automated Resume Screening System
     </div>
 """, unsafe_allow_html=True)
