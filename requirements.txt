@@ -9,5 +9,5 @@ nltk
 spacy
 sentence-transformers
 joblib
-gunicorn
+gunicorn==21.2.0
 python-dotenv
